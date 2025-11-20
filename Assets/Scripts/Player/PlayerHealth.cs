@@ -88,33 +88,35 @@ public class PlayerHealth : Singleton<PlayerHealth>
     }
 
     // ---- Death ----
-    private void Die()
+  private void Die()
+{
+    if (isDead) return;
+    isDead = true;
+
+    canTakeDamage = false;
+    playerAttack?.DisableActions();
+
+    var controller = GetComponent<PlayerController>();
+    if (controller != null) controller.enabled = false;
+
+    if (rb != null)
     {
-        if (isDead) return;
-        isDead = true;
-
-        Debug.Log("Player died!");
-
-        canTakeDamage = false;
-
-        playerAttack?.DisableActions();
-
-        var controller = GetComponent<PlayerController>();
-        if (controller != null)
-            controller.enabled = false;
-
-        if (rb != null)
-        {
-            rb.linearVelocity = Vector2.zero;
-            rb.constraints = RigidbodyConstraints2D.FreezeAll;
-        }
-
-        Collider2D[] cols = GetComponentsInChildren<Collider2D>();
-        foreach (var c in cols)
-            c.enabled = false;
-
-        myAnimator.SetTrigger("Die");
+        rb.linearVelocity = Vector2.zero;
+        rb.constraints = RigidbodyConstraints2D.FreezeAll;
     }
+
+    foreach (var c in GetComponentsInChildren<Collider2D>())
+        c.enabled = false;
+
+    // chạy animation chết
+    myAnimator.SetTrigger("Die");
+}
+
+public void OnDeathAnimationFinished()
+{
+    YouDiedEffect.Instance.PlayEffect();  
+}
+
 
     // ---- Update UI ----
     private void UpdateHealthSlider()
@@ -138,4 +140,12 @@ public class PlayerHealth : Singleton<PlayerHealth>
         UpdateHealthSlider();
         Debug.Log($"[PlayerHealth] Reset HP = {currentHealth}");
     }
+    private IEnumerator WaitForDeathAnimation()
+{
+    yield return null;
+    AnimatorStateInfo info = myAnimator.GetCurrentAnimatorStateInfo(0);  
+    yield return new WaitForSeconds(info.length);
+    YouDiedEffect.Instance.PlayEffect();
+}
+    
 }
