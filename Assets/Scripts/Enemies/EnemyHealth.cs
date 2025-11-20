@@ -4,7 +4,6 @@ using System.Collections;
 public class EnemyHealth : MonoBehaviour
 {
     [SerializeField] private int maxHealth = 100;
-    [SerializeField] private float interruptRecover = 0.6f; // thời gian “choáng” sau khi bị đánh (tuỳ chọn)
 
     private int currentHealth;
     private Knockback knockback;
@@ -12,8 +11,7 @@ public class EnemyHealth : MonoBehaviour
     private Animator anim;
     private Rigidbody2D rb;
     private Collider2D col;
-    private EnemyDamage enemyDamage;     // ⬅️ thêm tham chiếu
-
+    private EnemyDamage enemyDamage;     
     private bool isDead = false;
 
     private void Awake()
@@ -23,7 +21,7 @@ public class EnemyHealth : MonoBehaviour
         anim = GetComponent<Animator>();
         rb = GetComponent<Rigidbody2D>();
         col = GetComponent<Collider2D>();
-        enemyDamage = GetComponent<EnemyDamage>(); // ⬅️ lấy component để hủy đòn
+        enemyDamage = GetComponent<EnemyDamage>(); 
     }
 
     private void Start()
@@ -37,14 +35,14 @@ public class EnemyHealth : MonoBehaviour
 
         currentHealth -= damage;
 
-        // 🔥 HỦY ĐÒN / CHOÁNG enemy ngay khi bị trúng
+       
         if (enemyDamage != null)
         {
             enemyDamage.CancelAttack();                 // hủy animation/đòn đang ra
-            // hoặc: enemyDamage.Stun(interruptRecover); // nếu bạn dùng cơ chế stun
+    
         }
 
-        // Knockback + flash (nếu có component)
+        // Knockback 
         if (knockback != null) knockback.GetKnockedBack(PlayerController.Instance.transform, 2f);
         if (flash != null) StartCoroutine(flash.FlashRoutine());
 
@@ -66,6 +64,9 @@ public class EnemyHealth : MonoBehaviour
 
         // Gọi animation chết
         if (anim != null) anim.SetTrigger("Die");
+        PickUpSpawner drop = GetComponent<PickUpSpawner>();
+        if (drop != null)
+        drop.DropItems();
 
         // Destroy sau khi animation chạy xong
         StartCoroutine(DeathRoutine());
@@ -73,10 +74,10 @@ public class EnemyHealth : MonoBehaviour
 
     private IEnumerator DeathRoutine()
     {
-        // chờ 1 frame để Animator thực sự vào state "Die"
+        
         yield return null;
 
-        float wait = 0.5f; // fallback
+        float wait = 0.5f; 
         if (anim != null)
         {
             var info = anim.GetCurrentAnimatorStateInfo(0);
@@ -87,11 +88,4 @@ public class EnemyHealth : MonoBehaviour
         Destroy(gameObject);
     }
 
-    public void DetectDeath()
-    {
-        if (currentHealth <= 0 && !isDead)
-        {
-            Die();
-        }
-    }
 }

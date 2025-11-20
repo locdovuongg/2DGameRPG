@@ -15,16 +15,21 @@ public class EnemyPathfinding : MonoBehaviour
     }
 
     private void FixedUpdate()
+{
+    // Nếu bị knockback -> không di chuyển
+    if (knockback.gettingKnockedBack)
     {
-        // Nếu bị knockback -> không di chuyển
-        if (knockback.gettingKnockedBack)
-        {
-            return;
-        }
-
-        // Di chuyển bình thường bằng velocity
-        rb.linearVelocity = moveDir * moveSpeed;
+        return;
     }
+
+    rb.linearVelocity = moveDir * moveSpeed;
+
+    // ------ Flip trái/phải tự động theo hướng di chuyển ------
+    if (rb.linearVelocity.x < -0.1f)
+        transform.localScale = new Vector3(-1, 1, 1);
+    else if (rb.linearVelocity.x > 0.1f)
+        transform.localScale = new Vector3(1, 1, 1);
+}
 
     public void MoveTo(Vector2 direction)
     {

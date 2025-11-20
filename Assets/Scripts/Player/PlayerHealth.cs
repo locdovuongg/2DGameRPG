@@ -1,46 +1,60 @@
 using UnityEngine;
 using System.Collections;
+using UnityEngine.UI;
 
 [RequireComponent(typeof(Rigidbody2D))]
-public class PlayerHealth : MonoBehaviour
+public class PlayerHealth : Singleton<PlayerHealth>
 {
+    [Header("Health Settings")]
     [SerializeField] private int maxHealth = 100;
     [SerializeField] private float damageRecoveryTime = 1f;
 
+    [Header("UI")]
+    [SerializeField] private Slider healthSlider; 
+    const string HEALTH_SLIDER_TEXT = "Health Slider";
     private int currentHealth;
     private bool canTakeDamage = true;
     private Animator myAnimator;
     private Rigidbody2D rb;
     private PlayerAttack playerAttack;
+    private bool isDead = false;
 
-    private void Awake()
+    protected override void Awake()
     {
+        base.Awake();
+
         myAnimator = GetComponent<Animator>();
         rb = GetComponent<Rigidbody2D>();
         playerAttack = GetComponent<PlayerAttack>();
-         Debug.Log("[PlayerHealth] Awake: Player được tạo");
+
+        Debug.Log("[PlayerHealth] Awake: Player created.");
     }
 
     private void Start()
     {
-        ResetHealthToMax();
-    }
-
-    public void ResetHealthToMax()
-    {
         currentHealth = maxHealth;
-        canTakeDamage = true;
-        Debug.Log($"[PlayerHealth] Reset HP = {currentHealth}");
+        UpdateHealthSlider();
     }
 
+    // ---- Healing ----
+    public void HealPlayer()
+    {
+        if (currentHealth < maxHealth)
+        {
+            currentHealth += 20;
+            UpdateHealthSlider();
+        }
+    }
+
+    // ---- Damage ----
     public void TakeDamage(int damage, Vector2 knockback)
     {
-            Debug.Log("[PlayerHealth] TakeDamage() được gọi");
+        Debug.Log("[PlayerHealth] TakeDamage() called");
 
         if (!canTakeDamage) return;
 
         currentHealth -= damage;
-        currentHealth = Mathf.Max(0, currentHealth); // tránh âm máu
+        currentHealth = Mathf.Max(0, currentHealth);
         canTakeDamage = false;
 
         Debug.Log($"[PlayerHealth] HP: {currentHealth}");
@@ -51,10 +65,17 @@ public class PlayerHealth : MonoBehaviour
         rb.linearVelocity = Vector2.zero;
         rb.AddForce(knockback, ForceMode2D.Impulse);
 
-        StartCoroutine(DamageRecoveryRoutine());
+        UpdateHealthSlider();
+        CheckIfPlayerDead();
 
+        StartCoroutine(DamageRecoveryRoutine());
+    }
+
+    private void CheckIfPlayerDead()
+    {
         if (currentHealth <= 0)
         {
+            currentHealth = 0;
             Die();
         }
     }
@@ -66,11 +87,55 @@ public class PlayerHealth : MonoBehaviour
         playerAttack?.EnableActions();
     }
 
+    // ---- Death ----
     private void Die()
     {
+        if (isDead) return;
+        isDead = true;
+
         Debug.Log("Player died!");
-        myAnimator.SetTrigger("Die");
+
+        canTakeDamage = false;
+
         playerAttack?.DisableActions();
-        // this.enabled = false; // hoặc bạn có thể respawn sau
+
+        var controller = GetComponent<PlayerController>();
+        if (controller != null)
+            controller.enabled = false;
+
+        if (rb != null)
+        {
+            rb.linearVelocity = Vector2.zero;
+            rb.constraints = RigidbodyConstraints2D.FreezeAll;
+        }
+
+        Collider2D[] cols = GetComponentsInChildren<Collider2D>();
+        foreach (var c in cols)
+            c.enabled = false;
+
+        myAnimator.SetTrigger("Die");
+    }
+
+    // ---- Update UI ----
+    private void UpdateHealthSlider()
+    {
+        if (healthSlider == null)
+        {
+         healthSlider = GameObject.Find(HEALTH_SLIDER_TEXT).GetComponent<Slider>();
+        }
+
+        healthSlider.maxValue = maxHealth;
+        healthSlider.value = currentHealth;
+    }
+
+    // ---- Reset ----
+    public void ResetHealthToMax()
+    {
+        currentHealth = maxHealth;
+        canTakeDamage = true;
+        isDead = false;
+
+        UpdateHealthSlider();
+        Debug.Log($"[PlayerHealth] Reset HP = {currentHealth}");
     }
 }

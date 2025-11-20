@@ -64,8 +64,23 @@ public class EnemyAI : MonoBehaviour
         if (distance <= detectRange)
         {
             state = State.Chasing;
-            Vector2 dir = (player.position - transform.position).normalized;
-            enemyPathfinding.MoveTo(dir);
+            Vector2 dir;
+
+    float dx = player.position.x - transform.position.x;
+    float dy = player.position.y - transform.position.y;
+
+    if (Mathf.Abs(dx) > Mathf.Abs(dy))
+    {
+    // Ưu tiên di chuyển ngang
+        dir = new Vector2(Mathf.Sign(dx), 0);
+    }
+    else
+    {
+    // Ưu tiên di chuyển dọc
+        dir = new Vector2(0, Mathf.Sign(dy));
+    }
+
+    enemyPathfinding.MoveTo(dir);
         }
         else
         {

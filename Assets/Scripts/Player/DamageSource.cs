@@ -19,7 +19,7 @@ public class DamageSource : MonoBehaviour
                 enemyDamage.CancelAttack(); // hủy animation/đòn đang ra
             }
 
-            return; // đã xử lý xong cho enemy, khỏi xét tiếp
+            return;
         }
 
         // 2) Đồ phá được (bụi cỏ, hoa...)

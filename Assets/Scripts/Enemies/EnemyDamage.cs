@@ -20,18 +20,14 @@ public class EnemyDamage : MonoBehaviour
         anim = GetComponent<Animator>();
     }
 
-    /// <summary>
-    /// Gọi từ EnemyAI khi đủ điều kiện để tấn công
-    /// </summary>
     public void TriggerAttack()
     {
 
-    isAttacking = true;         // ⚔️ đang đánh
+    isAttacking = true;         
     canAttack = false;
-    anim.SetTrigger("Attack");  // gọi animation attack
+    anim.SetTrigger("Attack"); 
     Invoke(nameof(ResetAttack), attackCooldown);
 }
-
 private void ResetAttack()
 {
     canAttack = true;
