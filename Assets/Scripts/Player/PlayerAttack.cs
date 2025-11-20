@@ -11,14 +11,14 @@ public class PlayerAttack : MonoBehaviour
     private Animator myAnimator;
     private PlayerController playerController;
 
-    private bool canAct = true;       // có thể hành động?
-    private bool isAttacking = false; // đang tấn công?
+    private bool canAct = true;
+    private bool isAttacking = false;
 
-    private bool Blocked() => !canAct || isAttacking; // hàm check khóa
+    private bool Blocked() => !canAct || isAttacking;
 
     private void Awake()
     {
-        playerControls = new PlayerControls();
+        playerControls = new PlayerControls();   // Input System
         myAnimator = GetComponent<Animator>();
         playerController = GetComponent<PlayerController>();
     }
@@ -28,23 +28,27 @@ public class PlayerAttack : MonoBehaviour
         playerControls.Enable();
     }
 
-    void Start()
+    private void OnDisable()
     {
-        playerControls.Combat.Attack.started       += _ => Attack();
-        playerControls.Combat.HeavyAttack.started  += _ => HeavyAttack();
-        playerControls.Combat.BowAttack.started    += _ => BowAttack();
+        playerControls.Disable();   // ❗ STOP leak input
+    }
+
+    private void Start()
+    {
+        playerControls.Combat.Attack.started      += _ => Attack();
+        playerControls.Combat.HeavyAttack.started += _ => HeavyAttack();
+        playerControls.Combat.BowAttack.started   += _ => BowAttack();
     }
 
     private void Update()
     {
+        if (playerController == null) return;
         MouseFollowWithOffsett();
     }
 
-    // ------------------ Attack Commands ------------------ //
     private void Attack()
     {
         if (Blocked()) return;
-
         isAttacking = true;
         myAnimator.SetTrigger("Attack");
     }
@@ -52,7 +56,6 @@ public class PlayerAttack : MonoBehaviour
     private void HeavyAttack()
     {
         if (Blocked()) return;
-
         isAttacking = true;
         myAnimator.SetTrigger("HeavyAttack");
     }
@@ -60,48 +63,41 @@ public class PlayerAttack : MonoBehaviour
     private void BowAttack()
     {
         if (Blocked()) return;
-
         isAttacking = true;
         myAnimator.SetTrigger("BowAttack");
     }
 
-    // ------------------ Animation Events ------------------ //
-
-    // Kết thúc animation attack
     public void DoneAttackAnimEvent()
     {
-        if (!canAct) return;               // ⬅ CHẶN event khi bị đánh
+        if (!canAct) return;
         isAttacking = false;
-        if (WeaponCollider) 
+
+        if (WeaponCollider)
             WeaponCollider.gameObject.SetActive(false);
     }
 
     public void EnableAttackCollider()
     {
-        if (!canAct) return;               // Không bật khi đang bị hit
+        if (!canAct) return;
+
         if (WeaponCollider)
             WeaponCollider.gameObject.SetActive(true);
     }
 
-    // Bắn tên
     public void ShootArrowAnimEvent()
     {
-        if (!canAct) return;
-
-        if (arrowPrefab == null) return;
+        if (!canAct || arrowPrefab == null) return;
 
         Vector3 mouseWorld = Camera.main.ScreenToWorldPoint(Input.mousePosition);
         mouseWorld.z = 0f;
 
         Vector3 dir = (mouseWorld - bowFirePoint.position).normalized;
-
         Quaternion rot = Quaternion.FromToRotation(Vector3.right, dir);
-        GameObject arrow = Instantiate(arrowPrefab, bowFirePoint.position, rot);
 
+        GameObject arrow = Instantiate(arrowPrefab, bowFirePoint.position, rot);
         arrow.GetComponent<Arrow>().SetDirection(dir);
     }
 
-    // ------------------ Action Lock / Unlock ------------------ //
     public void DisableActions()
     {
         canAct = false;
@@ -110,7 +106,6 @@ public class PlayerAttack : MonoBehaviour
         if (WeaponCollider)
             WeaponCollider.gameObject.SetActive(false);
 
-        // reset trigger để tránh lỗi stuck animation
         myAnimator.ResetTrigger("Attack");
         myAnimator.ResetTrigger("HeavyAttack");
         myAnimator.ResetTrigger("BowAttack");
@@ -125,19 +120,14 @@ public class PlayerAttack : MonoBehaviour
             WeaponCollider.gameObject.SetActive(false);
     }
 
-    // ------------------ Weapon Rotation ------------------ //
     private void MouseFollowWithOffsett()
     {
         Vector3 mousePos = Input.mousePosition;
         Vector3 playerScreenPoint = Camera.main.WorldToScreenPoint(playerController.transform.position);
 
         if (mousePos.x < playerScreenPoint.x)
-        {
-            WeaponCollider.transform.rotation = Quaternion.Euler(0, -180, 0);
-        }
+            WeaponCollider.rotation = Quaternion.Euler(0, -180, 0);
         else
-        {
-            WeaponCollider.transform.rotation = Quaternion.Euler(0, 0, 0);
-        }
+            WeaponCollider.rotation = Quaternion.Euler(0, 0, 0);
     }
 }

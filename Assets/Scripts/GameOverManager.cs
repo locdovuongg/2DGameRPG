@@ -9,22 +9,40 @@ public class GameOverManager : MonoBehaviour
 
     private void Awake()
     {
-        if (Instance == null) Instance = this;
-        else Destroy(gameObject);
+        if (Instance != null && Instance != this)
+        {
+            Destroy(gameObject);
+            return;
+        }
 
-        gameOverPanel.SetActive(false); // ẩn lúc đầu
+        Instance = this;
+
+        if (gameOverPanel != null)
+            gameOverPanel.SetActive(false);
     }
 
     public void ShowGameOver()
     {
-        gameOverPanel.SetActive(true);
-        Time.timeScale = 0f;  // dừng game
+        if (gameOverPanel != null)
+            gameOverPanel.SetActive(true);
+
+        Time.timeScale = 0f;
     }
 
     public void RestartGame()
     {
-        Time.timeScale = 1f;
-        SceneManager.LoadScene(SceneManager.GetActiveScene().name);
+       Time.timeScale = 1f;
+
+    // 🔥 TẮT TẤT CẢ UI TRƯỚC KHI LOAD LẠI SCENE
+    if (gameOverPanel != null)
+        gameOverPanel.SetActive(false);
+
+    var died = FindObjectOfType<YouDiedEffect>();
+    if (died != null)
+        died.ForceHidePanel();
+
+    // Load lại scene
+    SceneManager.LoadScene(SceneManager.GetActiveScene().name);
     }
 
     public void QuitGame()

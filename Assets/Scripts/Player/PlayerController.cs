@@ -1,49 +1,57 @@
 using UnityEngine;
 using UnityEngine.InputSystem;
 using System.Collections;
-using System.Collections.Generic;
 
-public class PlayerController : Singleton<PlayerController>
+public class PlayerController : MonoBehaviour
 {
-    // Start is called once before the first execution of Update after the MonoBehaviour is created
-[SerializeField] private float moveSpeed = 1f;
-[SerializeField] private float dashSpeed = 4f;
-[SerializeField] private TrailRenderer myTraiRenderer;
-private PlayerControls playerControls;
-private Vector2 movement;
-private Rigidbody2D rb;
-private Animator myAnimator;
-private SpriteRenderer mySpriteRender;
+    [SerializeField] private float moveSpeed = 1f;
+    [SerializeField] private float dashSpeed = 4f;
+    [SerializeField] private TrailRenderer myTraiRenderer;
 
-private bool isDashing = false;
-    protected override void Awake()
+    private PlayerControls playerControls;
+    private Vector2 movement;
+    private Rigidbody2D rb;
+    private Animator myAnimator;
+    private SpriteRenderer mySpriteRender;
+    private bool isDashing = false;
+    public static PlayerController Instance { get; private set; }
+
+    private void Awake()
     {
-        base.Awake();
+        Instance = this;
         playerControls = new PlayerControls();
         rb = GetComponent<Rigidbody2D>();
         myAnimator = GetComponent<Animator>();
         mySpriteRender = GetComponent<SpriteRenderer>();
-      
     }
+
     private void Start()
     {
-        playerControls.Combat.Dash.performed += _ => Dash();   
+        playerControls.Combat.Dash.performed += _ => Dash();
     }
+
     private void OnEnable()
     {
         playerControls.Enable();
     }
 
+    private void OnDisable()
+    {
+         if (playerControls != null)
+        playerControls.Disable();
+    }
+
     private void Update()
     {
-      PlayerInput();
+        PlayerInput();
     }
 
     private void FixedUpdate()
     {
         AdjustPlayerFacingDirection();
-       Move();
+        Move();
     }
+
     private void PlayerInput()
     {
         movement = playerControls.Movement.Move.ReadValue<Vector2>();
@@ -51,44 +59,47 @@ private bool isDashing = false;
         myAnimator.SetFloat("moveX", movement.x);
         myAnimator.SetFloat("moveY", movement.y);
     }
+
     private void Move()
     {
         rb.MovePosition(rb.position + movement * (moveSpeed * Time.fixedDeltaTime));
     }
+
     private void AdjustPlayerFacingDirection()
     {
         Vector3 mousePos = Input.mousePosition;
         Vector3 playerScreenPoint = Camera.main.WorldToScreenPoint(transform.position);
-       if (mousePos.x < playerScreenPoint.x)
-        {
-            mySpriteRender.flipX = true;
-          
-        }
-        else
-        {
-            mySpriteRender.flipX = false;
-            
-        }
+
+        mySpriteRender.flipX = mousePos.x < playerScreenPoint.x;
     }
+
     private void Dash()
     {
-        if (!isDashing)
-        {
-           isDashing = true;
-           moveSpeed *= dashSpeed;
-           myTraiRenderer.emitting = true;
-           StartCoroutine(EndDashRoutine());
-        }
+        if (isDashing) return;
+
+        isDashing = true;
+        moveSpeed *= dashSpeed;
+
+        if (myTraiRenderer != null)
+            myTraiRenderer.emitting = true;
+
+        StartCoroutine(EndDashRoutine());
     }
+
     private IEnumerator EndDashRoutine()
     {
-       float dashTime = 0.3f;
-       float dashCD = 5f;
-       yield return new WaitForSeconds(dashTime);
-       moveSpeed/= dashSpeed;
-       myTraiRenderer.emitting = false;
-       yield return new WaitForSeconds(dashCD);
-       isDashing = false;
+        float dashTime = 0.3f;
+        float dashCD = 5f;
+
+        yield return new WaitForSeconds(dashTime);
+
+        moveSpeed /= dashSpeed;
+
+        if (myTraiRenderer != null)
+            myTraiRenderer.emitting = false;
+
+        yield return new WaitForSeconds(dashCD);
+
+        isDashing = false;
     }
-  
 }

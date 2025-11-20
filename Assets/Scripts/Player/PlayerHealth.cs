@@ -3,7 +3,7 @@ using System.Collections;
 using UnityEngine.UI;
 
 [RequireComponent(typeof(Rigidbody2D))]
-public class PlayerHealth : Singleton<PlayerHealth>
+public class PlayerHealth : MonoBehaviour
 {
     [Header("Health Settings")]
     [SerializeField] private int maxHealth = 100;
@@ -11,30 +11,40 @@ public class PlayerHealth : Singleton<PlayerHealth>
 
     [Header("UI")]
     [SerializeField] private Slider healthSlider; 
-    const string HEALTH_SLIDER_TEXT = "Health Slider";
+    const string HEALTH_SLIDER_TEXT = "HealthSlider";
+
     private int currentHealth;
     private bool canTakeDamage = true;
     private Animator myAnimator;
     private Rigidbody2D rb;
     private PlayerAttack playerAttack;
     private bool isDead = false;
+     public static PlayerHealth Instance { get; private set; }
+     private bool deathEffectPlayed = false;
 
-    protected override void Awake()
+    private void Awake()
     {
-        base.Awake();
-
+        Instance = this;
         myAnimator = GetComponent<Animator>();
         rb = GetComponent<Rigidbody2D>();
         playerAttack = GetComponent<PlayerAttack>();
-
-        Debug.Log("[PlayerHealth] Awake: Player created.");
     }
 
     private void Start()
     {
+        if (healthSlider == null)
+        healthSlider = GameObject.Find("HealthSlider")?.GetComponent<Slider>();
         currentHealth = maxHealth;
         UpdateHealthSlider();
+      StartCoroutine(DelayedUIUpdate());
+        // Reset Rigidbody nếu bị FreezeAll từ scene trước
+        rb.constraints = RigidbodyConstraints2D.FreezeRotation;
     }
+    private IEnumerator DelayedUIUpdate()
+{
+    yield return new WaitForSeconds(0.05f); // chờ UI load
+    UpdateHealthSlider();
+}
 
     // ---- Healing ----
     public void HealPlayer()
@@ -49,15 +59,12 @@ public class PlayerHealth : Singleton<PlayerHealth>
     // ---- Damage ----
     public void TakeDamage(int damage, Vector2 knockback)
     {
-        Debug.Log("[PlayerHealth] TakeDamage() called");
-
+        if (isDead) return;
         if (!canTakeDamage) return;
 
         currentHealth -= damage;
         currentHealth = Mathf.Max(0, currentHealth);
         canTakeDamage = false;
-
-        Debug.Log($"[PlayerHealth] HP: {currentHealth}");
 
         myAnimator.SetTrigger("TakeDamage");
         playerAttack?.DisableActions();
@@ -79,7 +86,10 @@ public class PlayerHealth : Singleton<PlayerHealth>
             Die();
         }
     }
-
+public void ForceUpdateHealthUI()
+{
+    UpdateHealthSlider();
+}
     private IEnumerator DamageRecoveryRoutine()
     {
         yield return new WaitForSeconds(damageRecoveryTime);
@@ -88,42 +98,49 @@ public class PlayerHealth : Singleton<PlayerHealth>
     }
 
     // ---- Death ----
-  private void Die()
-{
-    if (isDead) return;
-    isDead = true;
-
-    canTakeDamage = false;
-    playerAttack?.DisableActions();
-
-    var controller = GetComponent<PlayerController>();
-    if (controller != null) controller.enabled = false;
-
-    if (rb != null)
+    private void Die()
     {
+        if (isDead) return;
+        isDead = true;
+
+        canTakeDamage = false;
+        playerAttack?.DisableActions();
+
+        var controller = GetComponent<PlayerController>();
+        if (controller != null) controller.enabled = false;
+
         rb.linearVelocity = Vector2.zero;
         rb.constraints = RigidbodyConstraints2D.FreezeAll;
+
+        foreach (var c in GetComponentsInChildren<Collider2D>())
+            c.enabled = false;
+
+        myAnimator.SetTrigger("Die");
     }
 
-    foreach (var c in GetComponentsInChildren<Collider2D>())
-        c.enabled = false;
+    // Animation Event gọi hàm này
+    public void OnDeathAnimationFinished()
+    {
+      if (deathEffectPlayed) return;  
+    deathEffectPlayed = true; 
 
-    // chạy animation chết
-    myAnimator.SetTrigger("Die");
-}
-
-public void OnDeathAnimationFinished()
-{
-    YouDiedEffect.Instance.PlayEffect();  
-}
-
+    YouDiedEffect.Instance.PlayEffect();
+    }
 
     // ---- Update UI ----
     private void UpdateHealthSlider()
     {
         if (healthSlider == null)
         {
-         healthSlider = GameObject.Find(HEALTH_SLIDER_TEXT).GetComponent<Slider>();
+            GameObject sliderObj = GameObject.Find(HEALTH_SLIDER_TEXT);
+
+            if (sliderObj != null)
+                healthSlider = sliderObj.GetComponent<Slider>();
+            else
+            {
+                Debug.LogError("Không tìm thấy Slider tên 'Health Slider' trong scene!");
+                return;
+            }
         }
 
         healthSlider.maxValue = maxHealth;
@@ -137,15 +154,14 @@ public void OnDeathAnimationFinished()
         canTakeDamage = true;
         isDead = false;
 
+        rb.constraints = RigidbodyConstraints2D.FreezeRotation;
+
+        foreach (var c in GetComponentsInChildren<Collider2D>())
+            c.enabled = true;
+
+        var controller = GetComponent<PlayerController>();
+        if (controller != null) controller.enabled = true;
+
         UpdateHealthSlider();
-        Debug.Log($"[PlayerHealth] Reset HP = {currentHealth}");
     }
-    private IEnumerator WaitForDeathAnimation()
-{
-    yield return null;
-    AnimatorStateInfo info = myAnimator.GetCurrentAnimatorStateInfo(0);  
-    yield return new WaitForSeconds(info.length);
-    YouDiedEffect.Instance.PlayEffect();
-}
-    
 }
